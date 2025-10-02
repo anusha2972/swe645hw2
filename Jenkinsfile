@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         IMAGE_NAME = "kiran1703/swe645hw2"
@@ -31,21 +35,19 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-prod', variable: 'KUBECONFIG')]) {
-                    sh """
-                      kubectl --kubeconfig=$KUBECONFIG apply -f deployment.yaml
-                      kubectl --kubeconfig=$KUBECONFIG apply -f service.yaml
-                      kubectl --kubeconfig=$KUBECONFIG set image deployment/swe645hw2 swe645hw2=${IMAGE_NAME}:${IMAGE_TAG} --record
-                      kubectl --kubeconfig=$KUBECONFIG rollout status deployment/swe645hw2 --timeout=120s
-                    """
+                withCredentials([file(credentialsId: 'kubeconfig-prod', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                      set -e
+                      kubectl apply -f k8s/deployment.yaml --kubeconfig=$KUBECONFIG_FILE
+                      kubectl apply -f k8s/service.yaml --kubeconfig=$KUBECONFIG_FILE
+                      kubectl set image deployment/swe645hw2 swe645hw2=${IMAGE_NAME}:${IMAGE_TAG} --record --kubeconfig=$KUBECONFIG_FILE
+                      kubectl rollout status deployment/swe645hw2 --timeout=120s --kubeconfig=$KUBECONFIG_FILE
+                      kubectl get deployment swe645hw2 -o wide --kubeconfig=$KUBECONFIG_FILE
+                      kubectl get pods -l app=swe645hw2 -o wide --kubeconfig=$KUBECONFIG_FILE
+                      kubectl get svc swe645hw2 -o wide --kubeconfig=$KUBECONFIG_FILE
+                    '''
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            sh 'docker logout || true'
         }
     }
 }
