@@ -12,7 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'master',
-                    url: 'https://github.com/kiranannadatha8/swe645hw1.git'
+                    url: 'https://github.com/anusha2972/swe645hw2.git'
             }
         }
 
